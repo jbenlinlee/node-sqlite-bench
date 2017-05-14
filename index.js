@@ -74,25 +74,27 @@ function writeData(dataset) {
 
   db.serialize(() => {
     console.log(">> Creating table");
-    db.run(`CREATE TABLE tbl (${dbSchema})`);
-    db.run("PRAGMA synchronous = 0;");
-    db.run("PRAGMA journal_mode = WAL;");
+    db.run("PRAGMA temp_store = FILE;")
+    db.run(`CREATE TABLE tbl (${dbSchema});`);
 
     const colVars = dataset.schema.map((x) => {return "?"}).join(',');
-    var stmt = db.prepare(`INSERT INTO tbl VALUES (${colVars})`);
+    var stmt = db.prepare(`INSERT INTO tbl VALUES (${colVars});`);
 
     console.log(">> Writing rows");
     const startTime = Date.now();
+    db.run("BEGIN TRANSACTION;");
     for (let i = 0; i < dataset.data.length; ++i) {
       stmt.run(dataset.data[i]);
     }
+    db.run("COMMIT;", (err) => {
+      const endTime = Date.now();
+      const elapsedTime = (endTime - startTime);
+      const writeRate = Math.floor(dataset.data.length / (elapsedTime / 1000.0));
+
+      console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
+    });
+    
     stmt.finalize();
-
-    const endTime = Date.now();
-    const elapsedTime = (endTime - startTime);
-    const writeRate = dataset.data.length / (elapsedTime / 1000.0);
-
-    console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
   });
 
   db.close();
