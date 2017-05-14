@@ -15,6 +15,7 @@ function randomInt(i, j) {
   return Math.floor(Math.random(Date.now()) * (max - min)) + min;
 }
 
+/* Generate a random value based on schema datatype */
 function generateCell(type) {
   const chance = new Chance();
 
