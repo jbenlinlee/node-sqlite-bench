@@ -1,4 +1,5 @@
 var Chance = require('chance');
+var Sqlite = require('sqlite3').verbose();
 
 const types = [
   'text',
@@ -7,6 +8,14 @@ const types = [
   'logical',
   'uuid'
 ]
+
+const sqliteTypeMap = {
+  'text': 'TEXT',
+  'number': 'REAL',
+  'datetime': 'DATETIME',
+  'logical': 'BOOLEAN',
+  'uuid': 'CHARACTER(36)'
+}
 
 /* Generate a random integer in the range [i,j] */
 function randomInt(i, j) {
@@ -53,9 +62,44 @@ function generateData(width, depth) {
   return {schema, data};
 }
 
+/* Writes a dataset into a sqlite database */
+function writeData(dataset) {
+  let db = new Sqlite.Database("");
+
+  const dbSchema = dataset.schema.map((type, idx) => {
+    const columnName = `${type}${idx}`;
+    const sqlType = sqliteTypeMap[type];
+    return `${columnName} ${sqlType}`;
+  }).join(',');
+
+  db.serialize(() => {
+    console.log(">> Creating table");
+    db.run(`CREATE TABLE tbl (${dbSchema})`);
+    db.run("PRAGMA synchronous = 0;");
+    db.run("PRAGMA journal_mode = WAL;");
+
+    const colVars = dataset.schema.map((x) => {return "?"}).join(',');
+    var stmt = db.prepare(`INSERT INTO tbl VALUES (${colVars})`);
+
+    console.log(">> Writing rows");
+    const startTime = Date.now();
+    for (let i = 0; i < dataset.data.length; ++i) {
+      stmt.run(dataset.data[i]);
+    }
+    stmt.finalize();
+    const endTime = Date.now();
+    const elapsedTime = (endTime - startTime);
+
+    console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms`);
+  });
+
+  db.close();
+}
+
 const args = process.argv.slice(2);
 const width = Number.parseInt(args.shift());
 const depth = Number.parseInt(args.shift());
 
-console.log(`Generating ${depth} rows with ${width} columns`);
+console.log(`>> Generating ${depth} rows with ${width} columns`);
 const dataset = generateData(width, depth);
+writeData(dataset);
