@@ -87,10 +87,12 @@ function writeData(dataset) {
       stmt.run(dataset.data[i]);
     }
     stmt.finalize();
+
     const endTime = Date.now();
     const elapsedTime = (endTime - startTime);
+    const writeRate = dataset.data.length / (elapsedTime / 1000.0);
 
-    console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms`);
+    console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
   });
 
   db.close();
