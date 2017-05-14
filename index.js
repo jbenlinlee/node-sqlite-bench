@@ -12,7 +12,7 @@ const types = [
 function randomInt(i, j) {
   let min = Math.ceil(i);
   let max = Math.floor(j);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(Math.random(Date.now()) * (max - min)) + min;
 }
 
 function generateCell(type) {
@@ -32,7 +32,8 @@ function generateCell(type) {
     }
 }
 
-/* Generates a dataset with width columns and depth records */
+/* Generates a dataset with width columns and depth records. Returns an
+object {schema: [], data: []} */
 function generateData(width, depth) {
   // Generate schema with an _id and "width" datatypes
   let schema = ['uuid'];
@@ -48,7 +49,7 @@ function generateData(width, depth) {
     data.push(row);
   }
 
-  return data;
+  return {schema, data};
 }
 
 const args = process.argv.slice(2);
@@ -56,4 +57,4 @@ const width = Number.parseInt(args.shift());
 const depth = Number.parseInt(args.shift());
 
 console.log(`Generating ${depth} rows with ${width} columns`);
-const data = generateData(width, depth);
+const dataset = generateData(width, depth);
