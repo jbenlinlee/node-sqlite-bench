@@ -45,6 +45,8 @@ function generateCell(type) {
 /* Generates a dataset with width columns and depth records. Returns an
 object {schema: [], data: []} */
 function generateData(width, depth) {
+  console.log(`>> Generating ${depth} rows with ${width} columns`);
+
   // Generate schema with an _id and "width" datatypes
   let schema = ['uuid'];
   const numTypes = types.length;
@@ -63,8 +65,10 @@ function generateData(width, depth) {
 }
 
 /* Writes a dataset into a sqlite database */
-function writeData(dataset) {
+function writeData(dataset, callback) {
   let db = new Sqlite.Database("");
+  let startTime = 0;
+  let endTime = 0;
 
   const dbSchema = dataset.schema.map((type, idx) => {
     const columnName = `${type}${idx}`;
@@ -81,29 +85,32 @@ function writeData(dataset) {
     var stmt = db.prepare(`INSERT INTO tbl VALUES (${colVars});`);
 
     console.log(">> Writing rows");
-    const startTime = Date.now();
+    endTime = Date.now();
+    startTime = Date.now();
+
     db.run("BEGIN TRANSACTION;");
     for (let i = 0; i < dataset.data.length; ++i) {
       stmt.run(dataset.data[i]);
     }
     db.run("COMMIT;", (err) => {
-      const endTime = Date.now();
-      const elapsedTime = (endTime - startTime);
-      const writeRate = Math.floor(dataset.data.length / (elapsedTime / 1000.0));
-
-      console.log(`Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
+      endTime = Date.now();
     });
-    
+
     stmt.finalize();
   });
 
-  db.close();
+  db.close((err) => {
+    callback({startTime, endTime});
+  });
 }
 
 const args = process.argv.slice(2);
 const width = Number.parseInt(args.shift());
 const depth = Number.parseInt(args.shift());
 
-console.log(`>> Generating ${depth} rows with ${width} columns`);
 const dataset = generateData(width, depth);
-writeData(dataset);
+writeData(dataset, (metrics) => {
+  const elapsedTime = (metrics.endTime - metrics.startTime);
+  writeRate = Math.floor(dataset.data.length / (elapsedTime / 1000.0));
+  console.log(`> Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
+});
