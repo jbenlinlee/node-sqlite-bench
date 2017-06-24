@@ -104,13 +104,34 @@ function writeData(dataset, callback) {
   });
 }
 
+/* Runs n trials */
+function executeTrial(ntrials, trialnum, results) {
+  if (trialnum == null || trialnum < ntrials) {
+    // Initial call or still have trials to run
+
+    let thisTrialNum = trialnum || 0;
+    let allResults = results || [];
+    console.log(`> Running trial ${thisTrialNum}`);
+
+    const dataset = generateData(width, depth);
+    writeData(dataset, (metrics) => {
+      const elapsedTime = (metrics.endTime - metrics.startTime);
+      writeRate = Math.floor(dataset.data.length / (elapsedTime / 1000.0));
+      allResults.push(writeRate);
+      console.log(`>> Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
+
+      executeTrial(ntrials, thisTrialNum + 1, allResults);
+    });
+  } else {
+    // No more trials to run, compute and output results
+    const averageRate = results.reduce((rate, sum) => {return sum += rate}) / ntrials;
+    console.log(`> Average rate over ${ntrials} trials is ${averageRate} rows/sec`);
+  }
+}
+
 const args = process.argv.slice(2);
 const width = Number.parseInt(args.shift());
 const depth = Number.parseInt(args.shift());
+const ntrials = Number.parseInt(args.shift());
 
-const dataset = generateData(width, depth);
-writeData(dataset, (metrics) => {
-  const elapsedTime = (metrics.endTime - metrics.startTime);
-  writeRate = Math.floor(dataset.data.length / (elapsedTime / 1000.0));
-  console.log(`> Wrote ${dataset.data.length} rows in ${elapsedTime}ms (${writeRate} rows/sec)`);
-});
+executeTrial(ntrials);
